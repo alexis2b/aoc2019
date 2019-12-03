@@ -6,7 +6,8 @@ namespace aoc2019
     {
         static void Main(string[] args)
         {
-            Day01.Run();
+            //Day01.Run();
+            Day02.Run();
         }
     }
 }
