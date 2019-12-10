@@ -7,20 +7,23 @@ namespace aoc2019
 {
     public sealed class IntComputer
     {
-        private readonly Dictionary<int, Func<int, int, int, bool>> _ops;
+        public enum ExitCode { NotStarted, Continue, NeedInput, Ended };
+        private readonly Dictionary<int, Func<int, int, int, ExitCode>> _ops;
 
         private List<int> _mem;
         private Queue<int> _inputs;
-        private readonly List<int> _outputs = new List<int>();
+        private readonly Queue<int> _outputs = new Queue<int>();
         private int _ip;
 
         public List<int> Memory => _mem.ToList();
         public List<int> Outputs => _outputs.ToList();
 
+        public ExitCode LastExitCode { get; private set; } = ExitCode.NotStarted;
+
         public IntComputer()
         {
             // Build the instruction list
-            _ops = new Dictionary<int, Func<int, int, int, bool>>
+            _ops = new Dictionary<int, Func<int, int, int, ExitCode>>
             {
                 [ 1] = OpAdd,
                 [ 2] = OpMultiply,
@@ -35,18 +38,34 @@ namespace aoc2019
         }
 
         // compatibility with Day 2
-        public void Run(IEnumerable<int> program) => Run(program, Enumerable.Empty<int>());
+        public ExitCode Run(IEnumerable<int> program) => Run(program, Enumerable.Empty<int>());
 
-        public void Run(IEnumerable<int> program, IEnumerable<int> inputs)
+        public ExitCode Run(IEnumerable<int> program, IEnumerable<int> inputs)
         {
+            // Load the program and initialize the state
             _mem = program.ToList();
-            _inputs = new Queue<int>(inputs);
+            _inputs = new Queue<int>();
             _ip = 0;
-            while(NextOp());
+            return Continue(inputs);
         }
 
+        public ExitCode Continue(IEnumerable<int> inputs)
+        {
+            // add the new inputs
+            foreach(var input in inputs)
+                _inputs.Enqueue(input);
+            ExitCode exitCode;
+            while((exitCode = NextOp()) == ExitCode.Continue);
+            return LastExitCode = exitCode;
+        }
+
+        public void AddInput(int input) => _inputs.Enqueue(input);
+
+        public int OutputCount => _outputs.Count;
+        public int PopOutput() => _outputs.Dequeue();
+
         // Execute the next operation, returns false when exit is requested (opcode 99)
-        private bool NextOp()
+        private ExitCode NextOp()
         {
             var op     = _mem[_ip];
             var code   = op % 100;
@@ -57,81 +76,109 @@ namespace aoc2019
             return _ops[code](mode1, mode2, mode3);
         }
 
-        private bool OpAdd(int mode1, int mode2, int mode3)
+        private ExitCode OpAdd(int mode1, int mode2, int mode3)
         {
             var a1 = mode1 == 1 ? _mem[_ip+1] : _mem[_mem[_ip+1]];
             var a2 = mode2 == 1 ? _mem[_ip+2] : _mem[_mem[_ip+2]];
             if ( mode3 == 1 ) throw new Exception($"OpAdd: mode3 can not be 1");
             _mem[_mem[_ip+3]] = a1 + a2;
             _ip = _ip + 4;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpMultiply(int mode1, int mode2, int mode3)
+        private ExitCode OpMultiply(int mode1, int mode2, int mode3)
         {
             var a1 = mode1 == 1 ? _mem[_ip+1] : _mem[_mem[_ip+1]];
             var a2 = mode2 == 1 ? _mem[_ip+2] : _mem[_mem[_ip+2]];
             if ( mode3 == 1 ) throw new Exception($"OpMultiply: mode3 can not be 1");
             _mem[_mem[_ip+3]] = a1 * a2;
             _ip = _ip + 4;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpInput(int mode1, int mode2, int mode3)
+        private ExitCode OpInput(int mode1, int mode2, int mode3)
         {
             if ( mode1 == 1 ) throw new Exception($"OpInput: mode1 can not be 1");
+            if ( _inputs.Count == 0 ) return ExitCode.NeedInput; // preserve the state, but need input
             _mem[_mem[_ip+1]] = _inputs.Dequeue();
             _ip = _ip + 2;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpOutput(int mode1, int mode2, int mode3)
+        private ExitCode OpOutput(int mode1, int mode2, int mode3)
         {
             var a1 = mode1 == 1 ? _mem[_ip+1] : _mem[_mem[_ip+1]];
-            _outputs.Add(a1);
+            _outputs.Enqueue(a1);
             _ip = _ip + 2;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpJumpIfTrue(int mode1, int mode2, int mode3)
+        private ExitCode OpJumpIfTrue(int mode1, int mode2, int mode3)
         {
             var a1 = mode1 == 1 ? _mem[_ip+1] : _mem[_mem[_ip+1]];
             var a2 = mode2 == 1 ? _mem[_ip+2] : _mem[_mem[_ip+2]];
             _ip = ( a1 != 0 ) ? a2 : _ip + 3;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpJumpIfFalse(int mode1, int mode2, int mode3)
+        private ExitCode OpJumpIfFalse(int mode1, int mode2, int mode3)
         {
             var a1 = mode1 == 1 ? _mem[_ip+1] : _mem[_mem[_ip+1]];
             var a2 = mode2 == 1 ? _mem[_ip+2] : _mem[_mem[_ip+2]];
             _ip = ( a1 == 0 ) ? a2 : _ip + 3;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpLessThan(int mode1, int mode2, int mode3)
+        private ExitCode OpLessThan(int mode1, int mode2, int mode3)
         {
             var a1 = mode1 == 1 ? _mem[_ip+1] : _mem[_mem[_ip+1]];
             var a2 = mode2 == 1 ? _mem[_ip+2] : _mem[_mem[_ip+2]];
             if ( mode3 == 1 ) throw new Exception($"OpLessThan: mode3 can not be 1");
             _mem[_mem[_ip+3]] = (a1 < a2) ? 1 : 0;
             _ip = _ip + 4;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpEquals(int mode1, int mode2, int mode3)
+        private ExitCode OpEquals(int mode1, int mode2, int mode3)
         {
             var a1 = mode1 == 1 ? _mem[_ip+1] : _mem[_mem[_ip+1]];
             var a2 = mode2 == 1 ? _mem[_ip+2] : _mem[_mem[_ip+2]];
             if ( mode3 == 1 ) throw new Exception($"OpLessThan: mode3 can not be 1");
             _mem[_mem[_ip+3]] = (a1 == a2) ? 1 : 0;
             _ip = _ip + 4;
-            return true;
+            return ExitCode.Continue;
         }
 
-        private bool OpEnd(int mode1, int mode2, int mode3) => false;
+        private ExitCode OpEnd(int mode1, int mode2, int mode3) => ExitCode.Ended;
     }
 
+
+    /// specific tests for new behavious which are not necessary
+    /// covered in a specific day test
+    [TestFixture]
+    internal class IntComputerTests
+    {
+        [Test]
+        public void TestRequestInputAndContinue()
+        {
+            var program  = new[] {3,5,4,5,99,0};
+            var computer = new IntComputer();
+            Assert.AreEqual(IntComputer.ExitCode.NotStarted, computer.LastExitCode);
+            var ec1 = computer.Run(program);
+            Assert.AreEqual(IntComputer.ExitCode.NeedInput, ec1);
+            Assert.AreEqual(IntComputer.ExitCode.NeedInput, computer.LastExitCode);
+
+            const int newInput = 321;
+            var ec2 = computer.Continue(new[] {newInput});
+            Assert.AreEqual(IntComputer.ExitCode.Ended, ec2);
+            Assert.AreEqual(IntComputer.ExitCode.Ended, computer.LastExitCode);
+            Assert.AreEqual(newInput, computer.Memory[5]);
+            Assert.AreEqual(1, computer.OutputCount);
+            Assert.AreEqual(newInput, computer.PopOutput());
+            Assert.AreEqual(0, computer.OutputCount);
+        }
+
+    }
 
 
 
