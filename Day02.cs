@@ -9,7 +9,7 @@ namespace aoc2019
     {
         public static void Run()
         {
-            var input = File.ReadAllLines(Path.Combine("input", "day02.txt")).SelectMany(l => l.Split(',')).Select(Int32.Parse).ToList();
+            var input = File.ReadAllLines(Path.Combine("input", "day02.txt")).SelectMany(l => l.Split(',')).Select(Int64.Parse).ToList();
 
             var res1 = ExecuteAndGetPosition0(input);
             Console.WriteLine($"Day01 - part1 - result: {res1}");
@@ -18,7 +18,7 @@ namespace aoc2019
             Console.WriteLine($"Day01 - part2 - result: {100*noun + verb}");
         }
 
-        public static int ExecuteAndGetPosition0(IEnumerable<int> input)
+        public static long ExecuteAndGetPosition0(IEnumerable<long> input)
         {
             var modifiedInput = input.ToList();
             modifiedInput[1] = 12;
@@ -28,7 +28,7 @@ namespace aoc2019
             return computer.Memory[0];
         }
 
-        public static (int, int) GuessNounAndVerb(IEnumerable<int> input, int target)
+        public static (int, int) GuessNounAndVerb(IEnumerable<long> input, long target)
         {
             for(var noun = 0; noun < 100; noun++)
                 for(var verb = 0; verb < 100; verb++)
