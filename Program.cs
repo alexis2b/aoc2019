@@ -14,7 +14,8 @@ namespace aoc2019
             //Day06.Run();
             //Day07.Run();
             //Day08.Run();
-            Day09.Run();
+            //Day09.Run();
+            Day10.Run();
         }
     }
 }
