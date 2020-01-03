@@ -23,7 +23,8 @@ namespace aoc2019
             //Day15.Run();
             //Day16.Run();
             //Day17.Run();
-            Day18.Run();
+            //Day18.Run();
+            Day19.Run();
         }
     }
 }
