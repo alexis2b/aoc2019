@@ -63,6 +63,7 @@ namespace aoc2019
             return LastExitCode = exitCode;
         }
 
+        public int InputCount => _inputs.Count;
         public void AddInput(long input) => _inputs.Enqueue(input);
 
         public int OutputCount => _outputs.Count;
