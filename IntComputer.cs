@@ -9,6 +9,7 @@ namespace aoc2019
     public sealed class IntComputer
     {
         public enum ExitCode { NotStarted, Continue, NeedInput, Ended };
+        private readonly bool _trace;
         private readonly Dictionary<int, Func<int, int, int, ExitCode>> _ops;
 
         private List<long> _mem;
@@ -22,8 +23,10 @@ namespace aoc2019
 
         public ExitCode LastExitCode { get; private set; } = ExitCode.NotStarted;
 
-        public IntComputer()
+        public IntComputer(bool trace = false)
         {
+            _trace = trace; // enable tracemode
+
             // Build the instruction list
             _ops = new Dictionary<int, Func<int, int, int, ExitCode>>
             {
@@ -68,6 +71,10 @@ namespace aoc2019
 
         public int OutputCount => _outputs.Count;
         public long PopOutput() => _outputs.Dequeue();
+        public void ClearOutputs()
+        {
+            _outputs.Clear();
+        }
 
         // Execute the next operation, returns false when exit is requested (opcode 99)
         private ExitCode NextOp()
@@ -151,6 +158,7 @@ namespace aoc2019
         {
             var a1 = ReadAt(_ip+1, mode1);
             _outputs.Enqueue(a1);
+            Trace($"OpOutput: a1={a1}");
             _ip = _ip + 2;
             return ExitCode.Continue;
         }
@@ -159,6 +167,7 @@ namespace aoc2019
         {
             var a1 = ReadAt(_ip+1, mode1);
             var a2 = ReadAt(_ip+2, mode2);
+            Trace($"OpJumpIfTrue: a1={a1}, a2={a2}");
             _ip = ( a1 != 0 ) ? (int) a2 : _ip + 3; // position can not be long
             return ExitCode.Continue;
         }
@@ -167,6 +176,7 @@ namespace aoc2019
         {
             var a1 = ReadAt(_ip+1, mode1);
             var a2 = ReadAt(_ip+2, mode2);
+            Trace($"OpJumpIfFalse: a1={a1}, a2={a2}");
             _ip = ( a1 == 0 ) ? (int) a2 : _ip + 3; // position can not be long
             return ExitCode.Continue;
         }
@@ -187,6 +197,7 @@ namespace aoc2019
             var a2 = ReadAt(_ip+2, mode2);
             var r  = (a1 == a2) ? 1 : 0;
             WriteAt(_ip+3, mode3, r);
+            Trace($"OpEquals: a1={a1}, a2={a2}, r={r}");
             _ip = _ip + 4;
             return ExitCode.Continue;
         }
@@ -200,6 +211,14 @@ namespace aoc2019
         }
 
         private ExitCode OpEnd(int mode1, int mode2, int mode3) => ExitCode.Ended;
+
+        private void Trace(string message)
+        {
+            if ( ! _trace ) return;
+            var ts   = DateTime.Now.ToString("hh:mm:ss.fff", CultureInfo.InvariantCulture);
+            var text = $"{ts} {_ip,04} {message}\n";
+            System.IO.File.AppendAllText("trace.log", text);
+        }
     }
 
 
